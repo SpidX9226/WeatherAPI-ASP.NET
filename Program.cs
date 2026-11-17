@@ -1,4 +1,5 @@
 using dotenv.net;
+using StackExchange.Redis;
 using WeatherAPI.Services;
 
 namespace WeatherAPI;
@@ -8,13 +9,16 @@ internal sealed class Program {
         var builder = WebApplication.CreateBuilder(args);
 
         var envVars = DotEnv.Read();
-                builder.Services.AddHttpClient();
+        
         builder.Configuration.AddInMemoryCollection(
             envVars
                 .Where(pair => !string.IsNullOrWhiteSpace(pair.Value))
                 .Select(pair => new KeyValuePair<string, string?>(pair.Key, pair.Value))
         );
-        builder.Services.AddHttpClient<WeatherService>();
+
+
+        builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect("localhost"));
+        builder.Services.AddHttpClient<IWeatherService, WeatherService>();
   
 
         builder

@@ -1,31 +1,42 @@
 using System.Net;
 using System.Runtime.Serialization;
-using HotChocolate.Execution;
+using System.Text.Json;
+using StackExchange.Redis;
 using WeatherAPI.Models;
 
 namespace WeatherAPI.Services;
 
-public class WeatherService
+public class WeatherService : IWeatherService
 {
     private readonly HttpClient _httpClient;
-    private readonly IConfiguration _config;
+    private readonly IDatabase _redis;
+    private readonly string _weatherApiKey;
 
-    public WeatherService(HttpClient httpClient, IConfiguration config)
+    public WeatherService(HttpClient httpClient, IConnectionMultiplexer connectionMultiplexer, IConfiguration configuration)
     {
         _httpClient = httpClient;
-        _config = config;
+        _redis = connectionMultiplexer.GetDatabase();
+        _weatherApiKey = configuration["WEATHER_API_KEY"] ?? throw new InvalidDataException("API_KEY is not configured.");
     }
 
     public async Task<WeatherForecast> GetByLatAndLonAsync(double lat, double lon)
     {
-        string? API_KEY = _config["WEATHER_API_KEY"];
+        string cacheKey = $"{lat}:{lon}";
+        var cachedData = await _redis.StringGetAsync(cacheKey);
 
-        if (string.IsNullOrWhiteSpace(API_KEY))
+        if (!cachedData.IsNullOrEmpty)
         {
-            throw new InvalidDataException("API_KEY is not configured.");
+            var res = JsonSerializer.Deserialize<WeatherForecast>(cachedData.ToString());
+
+            if (res is null)
+            {
+                throw new InvalidCastException("Unable to deserialize cached data.");
+            }
+
+            return res;
         }
 
-        string url = $"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}";
+        string url = $"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={_weatherApiKey}";
 
         OpenWeatherResponse? response;
 
@@ -42,21 +53,40 @@ public class WeatherService
             throw new InvalidOperationException("OpenWeather returned an empty response body.");
         }
 
-        return FromWeatherResponse(response);
+        var result = FromWeatherResponse(response);
+
+        var serializedData = JsonSerializer.Serialize(result);
+
+        await _redis.StringSetAsync(cacheKey, serializedData, new Expiration(TimeSpan.FromMinutes(10)));
+
+        return result;
     }
 
     public async Task<WeatherForecast> GetByCityAndCountryAsync(string city, string countryCode)
     {
-        string safeCity = Uri.EscapeDataString(city.Trim());
-        string safeCountryCode = Uri.EscapeDataString(countryCode.Trim());
-        string? API_KEY = _config["WEATHER_API_KEY"];
+        string normalizedCity = city.Trim().ToLower();
+        string normalizedCountryCode = countryCode.Trim().ToUpper();
 
-        if (string.IsNullOrWhiteSpace(API_KEY))
+        string cacheKey = $"{normalizedCity}:{normalizedCountryCode}";
+
+        var cachedData = await _redis.StringGetAsync(cacheKey);
+
+        if (!cachedData.IsNullOrEmpty)
         {
-            throw new InvalidDataException("API_KEY is not configured.");
+            var res = JsonSerializer.Deserialize<WeatherForecast>(cachedData.ToString());
+            
+            if (res is null)
+            {
+                throw new InvalidCastException("Unable to deserialize cached data.");
+            }
+
+            return res;
         }
 
-        string openWeatherUrl = $"https://api.openweathermap.org/data/2.5/weather?q={safeCity},{safeCountryCode}&appid={API_KEY}";
+        string safeCity = Uri.EscapeDataString(normalizedCity);
+        string safeCountryCode = Uri.EscapeDataString(normalizedCountryCode);
+
+        string openWeatherUrl = $"https://api.openweathermap.org/data/2.5/weather?q={safeCity},{safeCountryCode}&appid={_weatherApiKey}";
 
         OpenWeatherResponse? response;
 
@@ -71,7 +101,13 @@ public class WeatherService
             throw new InvalidOperationException("OpenWeather returned an empty response body.");
         }
 
-        return FromWeatherResponse(response);
+        var result = FromWeatherResponse(response);
+
+        var serializedData = JsonSerializer.Serialize(result);
+
+        await _redis.StringSetAsync(cacheKey, serializedData, new Expiration(TimeSpan.FromMinutes(10)));
+
+        return result;
     }
 
     private WeatherForecast FromWeatherResponse(OpenWeatherResponse response)

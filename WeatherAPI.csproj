@@ -10,6 +10,7 @@
     <PackageReference Include="dotenv.net" Version="4.2.0" />
     <PackageReference Include="HotChocolate.AspNetCore" Version="16.7.5" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
+    <PackageReference Include="StackExchange.Redis" Version="3.4.35" />
   </ItemGroup>
 
 </Project>
