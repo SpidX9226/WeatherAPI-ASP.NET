@@ -36,7 +36,7 @@ public class WeatherService : IWeatherService
             return res;
         }
 
-        string url = $"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={_weatherApiKey}";
+        string url = $"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={_weatherApiKey}&units=metric";
 
         OpenWeatherResponse? response;
 
@@ -86,7 +86,7 @@ public class WeatherService : IWeatherService
         string safeCity = Uri.EscapeDataString(normalizedCity);
         string safeCountryCode = Uri.EscapeDataString(normalizedCountryCode);
 
-        string openWeatherUrl = $"https://api.openweathermap.org/data/2.5/weather?q={safeCity},{safeCountryCode}&appid={_weatherApiKey}";
+        string openWeatherUrl = $"https://api.openweathermap.org/data/2.5/weather?q={safeCity},{safeCountryCode}&appid={_weatherApiKey}&units=metric";
 
         OpenWeatherResponse? response;
 

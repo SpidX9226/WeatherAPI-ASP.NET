@@ -1,9 +1,8 @@
 using WeatherAPI.Models;
-using WeatherAPI.Services;
 
 public partial class Query
 {
-    public async Task<WeatherForecast?> GetByLatAndLonAsync(double lat, double lon, [Service] IWeatherService weatherService)
+    public async Task<WeatherForecast?> GetWeatherByLatAndLonAsync(double lat, double lon, [Service] IWeatherService weatherService)
     {
         return await weatherService.GetByLatAndLonAsync(lat, lon);
     }
