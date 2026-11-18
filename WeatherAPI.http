@@ -1,6 +1,39 @@
 @WeatherAPI_HostAddress = http://localhost:5038
 
-GET {{WeatherAPI_HostAddress}}/weatherforecast/
-Accept: application/json
+### GraphQL in VSCode
+POST {{WeatherAPI_HostAddress}}/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
 
-###
+query GetWeatherByLatAndLon($lat: Float!, $lon: Float!) {
+    weatherByLatAndLon(lat: $lat, lon: $lon) {
+        country
+        city
+        temp
+        feelsLike
+    }
+}
+
+{
+    "lat": 55.75,
+    "lon": 37.62
+}
+
+### GraphQL in VSCode
+POST {{WeatherAPI_HostAddress}}/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query GetWeatherByCityAndCountry($city: String!, $country: String!) {
+    getWeatherByCityAndCountry(city: $city, country: $country) {
+        country
+        city
+        temp
+        feelsLike
+    }
+}
+
+{
+    "city": "Moscow",
+    "country": "RU"
+}
